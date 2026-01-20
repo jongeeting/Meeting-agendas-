@@ -86,7 +86,8 @@ meetings:
     scraper: "septa"
     pdf_pattern: "agenda"
     focus: "transportation"
-    enabled: false  # Inconsistent PDF structure - add to RCO email monitor instead
+    enabled: false  # Inconsistent PDF structure - use official_meetings_monitor.py instead
+    # NOTE: Subscribe to SEPTA board email notifications and use official_meetings_monitor.py
 
   pra:
     name: "Philadelphia Redevelopment Authority"
@@ -102,7 +103,8 @@ meetings:
     scraper: "land_bank"
     pdf_pattern: "agenda"
     focus: "housing"
-    enabled: true  # Board page found with 2025 agendas - will get 2026 when posted
+    enabled: false  # Page uses JavaScript - PDFs not in HTML. Use official_meetings_monitor.py instead
+    # NOTE: Subscribe to Land Bank email notifications and use official_meetings_monitor.py
 
   phrc:
     name: "Philadelphia Housing Redevelopment Corp"
@@ -118,8 +120,23 @@ settings:
   save_pdfs: false  # Whether to keep downloaded PDFs
   create_google_docs: false  # Enable when Google Docs setup is complete
 
+# Official Meetings Email Monitoring
+# Monitors official city meeting notifications (Land Bank, SEPTA, etc.)
+# SEPARATE from RCO monitoring - these go in regular summaries folder
+official_meetings_email:
+  enabled: true
+  gmail_credentials: "gmail-credentials.json"  # OAuth2 credentials from Google Cloud
+  gmail_label: "Official-Meetings"  # Gmail label to filter on
+  max_emails: 100  # Maximum emails to fetch per check
+  check_frequency: "weekly"  # How often to check (for documentation only)
+
+  # Meetings to subscribe to:
+  # - Philadelphia Land Bank board agendas (monthly): https://phillylandbank.org/contact/
+  # - SEPTA board meeting notices: Subscribe at https://www.septa.org/
+
 # RCO Newsletter Monitoring
-# Also monitors: Land Bank agendas, SEPTA board notices (received via email)
+# Monitors neighborhood organization newsletters (200+ RCOs)
+# SEPARATE from official meetings - these go in summaries/rco/
 rco_monitoring:
   enabled: true
   gmail_credentials: "gmail-credentials.json"  # OAuth2 credentials from Google Cloud
@@ -128,11 +145,6 @@ rco_monitoring:
   search_query: null  # Optional Gmail search query (e.g., "from:*@phillyneighborhoods.org")
   label_processed: true  # Add "RCO-Meeting" label to processed emails
   check_frequency: "daily"  # How often to check (for documentation only)
-
-  # Additional email sources to subscribe to:
-  # - Philadelphia Land Bank board agendas (monthly)
-  # - SEPTA board meeting notices
-  # - Individual RCO newsletters (200+)
 
   # Keywords for relevance filtering (used by Claude AI)
   relevant_keywords:
@@ -143,11 +155,8 @@ rco_monitoring:
     - bike lane
     - protected bike lane
     - transit
-    - SEPTA
     - street redesign
     - road diet
     - parking
     - housing
     - land use
-    - "land bank"  # Catch Land Bank emails
-    - "board meeting"  # Catch official board notices
