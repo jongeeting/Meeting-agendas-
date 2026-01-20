@@ -62,16 +62,18 @@ meetings:
     url: "https://phila.legistar.com/Calendar.aspx"
     scraper: "legistar"
     pdf_pattern: "Rules"
+    committee_keywords: ["Rules", "Committee on Rules"]
     focus: "general"
-    enabled: false  # Legistar requires different scraper
+    enabled: true  # Legistar scraper now implemented
 
   city_council_streets:
     name: "City Council Streets Committee"
     url: "https://phila.legistar.com/Calendar.aspx"
     scraper: "legistar"
     pdf_pattern: "Streets"
+    committee_keywords: ["Streets", "Committee on Streets", "Streets and Services"]
     focus: "general"
-    enabled: false  # Legistar requires different scraper
+    enabled: true  # Legistar scraper now implemented
 
   housing_advisory:
     name: "Philadelphia Housing Advisory Board"
@@ -87,7 +89,7 @@ meetings:
     scraper: "septa"
     pdf_pattern: "agenda"
     focus: "transportation"
-    enabled: false  # SEPTA requires different scraper
+    enabled: true  # SEPTA scraper now implemented
 
   pra:
     name: "Philadelphia Redevelopment Authority"
@@ -99,11 +101,11 @@ meetings:
 
   land_bank:
     name: "Philadelphia Land Bank"
-    url: "https://phillylandbank.org/"
+    url: "https://phdcphila.org/who-we-are/boards/philadelphia-land-bank-board/"
     scraper: "phdc"
-    pdf_pattern: "agenda"
+    pdf_pattern: "PLB-Board"
     focus: "housing"
-    enabled: false  # Land Bank doesn't publish agendas publicly on website
+    enabled: true  # Board agendas available at phdcphila.org
 
   phrc:
     name: "Philadelphia Housing Redevelopment Corp"
