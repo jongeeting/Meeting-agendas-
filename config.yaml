@@ -27,31 +27,31 @@ meetings:
 
   historical_commission:
     name: "Historical Commission"
-    url: "https://www.phila.gov/departments/philadelphia-historical-commission/meetings-agendas/"
+    url: "https://www.phila.gov/departments/philadelphia-historical-commission/public-meetings/"
     scraper: "phila_gov"
-    pdf_pattern: "agenda"
+    pdf_pattern: "HC-"
     focus: "historic"
     enabled: true
 
   historical_arch:
     name: "Historical Commission - Architecture Committee"
-    url: "https://www.phila.gov/departments/philadelphia-historical-commission/meetings-agendas/"
+    url: "https://www.phila.gov/departments/philadelphia-historical-commission/public-meetings/"
     scraper: "phila_gov"
     pdf_pattern: "architecture"
     focus: "historic"
-    enabled: true
+    enabled: false  # Architecture committee may not have separate agendas
 
   art_commission:
     name: "Art Commission"
-    url: "https://www.phila.gov/departments/art-commission/meetings/"
+    url: "https://www.phila.gov/departments/philadelphia-art-commission/public-meetings/"
     scraper: "phila_gov"
-    pdf_pattern: "agenda"
+    pdf_pattern: "Art-Commission-Agenda"
     focus: "design"
     enabled: true
 
   zba:
     name: "Zoning Board of Adjustment"
-    url: "https://www.phila.gov/departments/zoning-board-of-adjustment/meetings-decisions/"
+    url: "https://www.phila.gov/departments/zoning-board-of-adjustment/public-meetings/"
     scraper: "phila_gov"
     pdf_pattern: "agenda"
     focus: "housing"
@@ -74,10 +74,10 @@ meetings:
     enabled: false  # Legistar requires different scraper
 
   housing_advisory:
-    name: "Philadelphia Housing Advisory Commission"
-    url: "https://www.phila.gov/departments/housing-advisory-commission/"
+    name: "Philadelphia Housing Advisory Board"
+    url: "https://www.phila.gov/departments/division-of-housing-and-community-development/about/housing-advisory-board/"
     scraper: "phila_gov"
-    pdf_pattern: "agenda"
+    pdf_pattern: "Housing-Advisory"
     focus: "housing"
     enabled: true
 
