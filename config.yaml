@@ -120,3 +120,29 @@ settings:
   output_dir: "summaries"
   save_pdfs: false  # Whether to keep downloaded PDFs
   create_google_docs: false  # Enable when Google Docs setup is complete
+
+# RCO Newsletter Monitoring
+rco_monitoring:
+  enabled: true
+  gmail_credentials: "gmail-credentials.json"  # OAuth2 credentials from Google Cloud
+  output_dir: "summaries/rco"  # Where to save RCO meeting data
+  max_emails: 500  # Maximum emails to fetch per check
+  search_query: null  # Optional Gmail search query (e.g., "from:*@phillyneighborhoods.org")
+  label_processed: true  # Add "RCO-Meeting" label to processed emails
+  check_frequency: "daily"  # How often to check (for documentation only)
+
+  # Keywords for relevance filtering (used by Claude AI)
+  relevant_keywords:
+    - zoning
+    - variance
+    - development
+    - construction
+    - bike lane
+    - protected bike lane
+    - transit
+    - SEPTA
+    - street redesign
+    - road diet
+    - parking
+    - housing
+    - land use

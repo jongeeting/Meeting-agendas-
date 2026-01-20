@@ -28,6 +28,15 @@ ENV/
 # Environment variables
 .env
 
+# Gmail API tokens (sensitive!)
+gmail-token.pickle
+gmail-token.json
+
+# Google credentials (these are safe to commit, but ignore personal ones)
+# gmail-credentials.json is the OAuth app config and can be shared
+# But adding here in case you use personal credentials
+# Remove this line if you want to commit the credentials file
+
 # IDE
 .vscode/
 .idea/
