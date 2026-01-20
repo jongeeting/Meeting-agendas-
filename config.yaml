@@ -1,0 +1,112 @@
+# Configuration for Philadelphia Meeting Agenda Tracker
+#
+# Each meeting has:
+#   - name: Full name of the meeting body
+#   - url: URL to fetch agendas from
+#   - scraper: Which scraper class to use
+#   - pdf_pattern: Pattern to identify agenda PDFs
+#   - focus: Summarization focus (housing, design, historic, transportation, general)
+#   - enabled: Whether to include in batch runs (true/false)
+
+meetings:
+  pcpc:
+    name: "Philadelphia City Planning Commission"
+    url: "https://www.phila.gov/departments/philadelphia-city-planning-commission/public-meetings/"
+    scraper: "phila_gov"
+    pdf_pattern: "PCPC-Agenda"
+    focus: "housing"
+    enabled: true
+
+  cdr:
+    name: "Civic Design Review"
+    url: "https://www.phila.gov/departments/philadelphia-city-planning-commission/public-meetings/"
+    scraper: "phila_gov"
+    pdf_pattern: "CDR"
+    focus: "design"
+    enabled: true
+
+  historical_commission:
+    name: "Historical Commission"
+    url: "https://www.phila.gov/departments/philadelphia-historical-commission/meetings-agendas/"
+    scraper: "phila_gov"
+    pdf_pattern: "agenda"
+    focus: "historic"
+    enabled: true
+
+  historical_arch:
+    name: "Historical Commission - Architecture Committee"
+    url: "https://www.phila.gov/departments/philadelphia-historical-commission/meetings-agendas/"
+    scraper: "phila_gov"
+    pdf_pattern: "architecture"
+    focus: "historic"
+    enabled: true
+
+  art_commission:
+    name: "Art Commission"
+    url: "https://www.phila.gov/departments/art-commission/meetings/"
+    scraper: "phila_gov"
+    pdf_pattern: "agenda"
+    focus: "design"
+    enabled: true
+
+  zba:
+    name: "Zoning Board of Adjustment"
+    url: "https://www.phila.gov/departments/zoning-board-of-adjustment/meetings-decisions/"
+    scraper: "phila_gov"
+    pdf_pattern: "agenda"
+    focus: "housing"
+    enabled: true
+
+  city_council_rules:
+    name: "City Council Rules Committee"
+    url: "https://phila.legistar.com/Calendar.aspx"
+    scraper: "legistar"
+    pdf_pattern: "Rules"
+    focus: "general"
+    enabled: false  # Legistar requires different scraper
+
+  city_council_streets:
+    name: "City Council Streets Committee"
+    url: "https://phila.legistar.com/Calendar.aspx"
+    scraper: "legistar"
+    pdf_pattern: "Streets"
+    focus: "general"
+    enabled: false  # Legistar requires different scraper
+
+  housing_advisory:
+    name: "Philadelphia Housing Advisory Commission"
+    url: "https://www.phila.gov/departments/housing-advisory-commission/"
+    scraper: "phila_gov"
+    pdf_pattern: "agenda"
+    focus: "housing"
+    enabled: true
+
+  septa:
+    name: "SEPTA Board"
+    url: "https://www.septa.org/board/meetings.html"
+    scraper: "septa"
+    pdf_pattern: "agenda"
+    focus: "transportation"
+    enabled: false  # SEPTA requires different scraper
+
+  land_bank:
+    name: "Philadelphia Land Bank"
+    url: "https://phdcphila.org/land/land-bank/"
+    scraper: "phdc"
+    pdf_pattern: "agenda"
+    focus: "housing"
+    enabled: false  # PHDC requires different scraper
+
+  phrc:
+    name: "Philadelphia Housing Redevelopment Corp"
+    url: "https://phdcphila.org/"
+    scraper: "phdc"
+    pdf_pattern: "agenda"
+    focus: "housing"
+    enabled: false  # PHDC requires different scraper
+
+# Global settings
+settings:
+  output_dir: "summaries"
+  save_pdfs: false  # Whether to keep downloaded PDFs
+  create_google_docs: false  # Enable when Google Docs setup is complete
