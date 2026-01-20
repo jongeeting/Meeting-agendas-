@@ -103,13 +103,20 @@ Respond ONLY with the JSON object, no other text."""
             elif '```' in response_text:
                 response_text = response_text.split('```')[1].split('```')[0].strip()
 
+            # Try to find JSON object boundaries
+            if '{' in response_text and '}' in response_text:
+                start = response_text.find('{')
+                end = response_text.rfind('}') + 1
+                response_text = response_text[start:end]
+
             classification = json.loads(response_text)
 
             return classification
 
         except json.JSONDecodeError as e:
             print(f"Error parsing classification response: {e}")
-            print(f"Response was: {response_text[:200]}")
+            if 'response_text' in locals():
+                print(f"Response was: {response_text[:500]}")
             return {
                 'is_meeting': False,
                 'is_relevant': False,
@@ -118,6 +125,8 @@ Respond ONLY with the JSON object, no other text."""
             }
         except Exception as e:
             print(f"Error classifying email: {e}")
+            if 'response_text' in locals():
+                print(f"Response text: {response_text[:500] if isinstance(response_text, str) else 'N/A'}")
             return {
                 'is_meeting': False,
                 'is_relevant': False,
