@@ -19,7 +19,7 @@ import yaml
 from dotenv import load_dotenv
 
 from shared import extract_text_from_pdf, download_pdf, AgendaSummarizer
-from scrapers import PhilaGovScraper, PHDCScraper, LegistarScraper, SeptaScraper
+from scrapers import PhilaGovScraper, PHDCScraper, LegistarScraper, SeptaScraper, LandBankScraper
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +34,7 @@ class MeetingTracker:
         'phdc': PHDCScraper,
         'legistar': LegistarScraper,
         'septa': SeptaScraper,
+        'land_bank': LandBankScraper,
     }
 
     def __init__(self, config_path="config.yaml"):

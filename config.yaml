@@ -98,11 +98,11 @@ meetings:
 
   land_bank:
     name: "Philadelphia Land Bank"
-    url: "https://phdcphila.org/wp-content/uploads/PLBagendas/"
-    scraper: "email"  # Get via email - add to RCO monitor
-    pdf_pattern: "PLB-Board"
+    url: "https://phillylandbank.org/philadelphia-land-bank-board/"
+    scraper: "land_bank"
+    pdf_pattern: "agenda"
     focus: "housing"
-    enabled: false  # PDFs exist but no listing page - use RCO email monitor
+    enabled: true  # Board page found with 2025 agendas - will get 2026 when posted
 
   phrc:
     name: "Philadelphia Housing Redevelopment Corp"
