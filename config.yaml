@@ -51,11 +51,11 @@ meetings:
 
   zba:
     name: "Zoning Board of Adjustment"
-    url: "https://www.phila.gov/departments/zoning-board-of-adjustment/public-meetings/"
+    url: "https://li.phila.gov/zba-appeals-calendar"
     scraper: "phila_gov"
     pdf_pattern: "agenda"
     focus: "housing"
-    enabled: true
+    enabled: false  # Uses JavaScript calendar, not PDF agendas - needs custom scraper
 
   city_council_rules:
     name: "City Council Rules Committee"
@@ -64,7 +64,7 @@ meetings:
     pdf_pattern: "Rules"
     committee_keywords: ["Rules", "Committee on Rules"]
     focus: "general"
-    enabled: true  # Legistar scraper now implemented
+    enabled: false  # Legistar complex - needs refinement
 
   city_council_streets:
     name: "City Council Streets Committee"
@@ -73,7 +73,7 @@ meetings:
     pdf_pattern: "Streets"
     committee_keywords: ["Streets", "Committee on Streets", "Streets and Services"]
     focus: "general"
-    enabled: true  # Legistar scraper now implemented
+    enabled: false  # Legistar complex - needs refinement
 
   housing_advisory:
     name: "Philadelphia Housing Advisory Board"
@@ -81,15 +81,15 @@ meetings:
     scraper: "phila_gov"
     pdf_pattern: "Housing-Advisory"
     focus: "housing"
-    enabled: true
+    enabled: false  # No downloadable PDF agendas - virtual presentations only
 
   septa:
     name: "SEPTA Board"
-    url: "https://www.septa.org/board/meetings.html"
+    url: "https://www.septa.org/about/board/agenda.html"
     scraper: "septa"
     pdf_pattern: "agenda"
     focus: "transportation"
-    enabled: true  # SEPTA scraper now implemented
+    enabled: true  # Updated to agenda page
 
   pra:
     name: "Philadelphia Redevelopment Authority"
@@ -105,7 +105,7 @@ meetings:
     scraper: "phdc"
     pdf_pattern: "PLB-Board"
     focus: "housing"
-    enabled: true  # Board agendas available at phdcphila.org
+    enabled: false  # Board page no longer exists (404) - agendas not publicly listed
 
   phrc:
     name: "Philadelphia Housing Redevelopment Corp"
