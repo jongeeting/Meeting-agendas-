@@ -38,6 +38,13 @@ def test_imports():
         print("✗ anthropic - run: pip install anthropic")
         return False
 
+    try:
+        from dotenv import load_dotenv
+        print("✓ python-dotenv")
+    except ImportError:
+        print("✗ python-dotenv - run: pip install python-dotenv")
+        return False
+
     return True
 
 

@@ -43,15 +43,24 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Set up your API key:
+4. Set up your API key (choose one method):
+
+**Method 1: .env file (Recommended)**
 ```bash
 cp .env.example .env
-# Edit .env and add your Anthropic API key
+# Then edit .env and replace 'your_api_key_here' with your actual API key
 ```
 
-Alternatively, you can export the API key:
+The `.env` file will be automatically loaded when you run the script.
+
+**Method 2: Export environment variable**
 ```bash
 export ANTHROPIC_API_KEY='your_api_key_here'
+```
+
+**Method 3: Command line argument**
+```bash
+python pcpc_agenda_tracker.py --api-key "your_api_key_here"
 ```
 
 ## Usage

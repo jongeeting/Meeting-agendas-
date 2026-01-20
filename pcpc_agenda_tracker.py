@@ -19,6 +19,10 @@ import requests
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class PCPCAgendaTracker:
