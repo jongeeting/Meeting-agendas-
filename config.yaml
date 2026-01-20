@@ -89,21 +89,29 @@ meetings:
     focus: "transportation"
     enabled: false  # SEPTA requires different scraper
 
+  pra:
+    name: "Philadelphia Redevelopment Authority"
+    url: "https://phdcphila.org/philadelphia-redevelopment-authority-board/"
+    scraper: "phdc"
+    pdf_pattern: "PRA-Board-Agenda"
+    focus: "housing"
+    enabled: true  # PHDC scraper now implemented
+
   land_bank:
     name: "Philadelphia Land Bank"
-    url: "https://phdcphila.org/land/land-bank/"
+    url: "https://phillylandbank.org/"
     scraper: "phdc"
     pdf_pattern: "agenda"
     focus: "housing"
-    enabled: false  # PHDC requires different scraper
+    enabled: false  # Land Bank doesn't publish agendas publicly on website
 
   phrc:
     name: "Philadelphia Housing Redevelopment Corp"
     url: "https://phdcphila.org/"
     scraper: "phdc"
-    pdf_pattern: "agenda"
+    pdf_pattern: "PHRC"
     focus: "housing"
-    enabled: false  # PHDC requires different scraper
+    enabled: false  # Need to find correct agenda page
 
 # Global settings
 settings:
