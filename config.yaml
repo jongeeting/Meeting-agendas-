@@ -55,7 +55,9 @@ meetings:
     scraper: "phila_gov"
     pdf_pattern: "agenda"
     focus: "housing"
-    enabled: false  # Uses JavaScript calendar, not PDF agendas - needs custom scraper
+    enabled: false  # Uses JavaScript calendar - ALTERNATIVE: Use existing ZBA project data
+    # NOTE: Construct weekly hearing digest from existing ZBA case compilation project
+    # Project contains hearing dates - can generate "upcoming hearings this week" digest
 
   city_council_rules:
     name: "City Council Rules Committee"
@@ -75,21 +77,16 @@ meetings:
     focus: "general"
     enabled: false  # Legistar complex - needs refinement
 
-  housing_advisory:
-    name: "Philadelphia Housing Advisory Board"
-    url: "https://www.phila.gov/departments/division-of-housing-and-community-development/about/housing-advisory-board/"
-    scraper: "phila_gov"
-    pdf_pattern: "Housing-Advisory"
-    focus: "housing"
-    enabled: false  # No downloadable PDF agendas - virtual presentations only
+  # NOTE: Housing Advisory Board removed - quarterly virtual meetings with no votes
+  # Use RCO email monitor instead if needed
 
   septa:
     name: "SEPTA Board"
-    url: "https://www.septa.org/about/board/agenda.html"
+    url: "https://www.septa.org/about/board/"
     scraper: "septa"
     pdf_pattern: "agenda"
     focus: "transportation"
-    enabled: true  # Updated to agenda page
+    enabled: false  # Inconsistent PDF structure - add to RCO email monitor instead
 
   pra:
     name: "Philadelphia Redevelopment Authority"
@@ -101,11 +98,11 @@ meetings:
 
   land_bank:
     name: "Philadelphia Land Bank"
-    url: "https://phdcphila.org/who-we-are/boards/philadelphia-land-bank-board/"
-    scraper: "phdc"
+    url: "https://phdcphila.org/wp-content/uploads/PLBagendas/"
+    scraper: "email"  # Get via email - add to RCO monitor
     pdf_pattern: "PLB-Board"
     focus: "housing"
-    enabled: false  # Board page no longer exists (404) - agendas not publicly listed
+    enabled: false  # PDFs exist but no listing page - use RCO email monitor
 
   phrc:
     name: "Philadelphia Housing Redevelopment Corp"
@@ -122,6 +119,7 @@ settings:
   create_google_docs: false  # Enable when Google Docs setup is complete
 
 # RCO Newsletter Monitoring
+# Also monitors: Land Bank agendas, SEPTA board notices (received via email)
 rco_monitoring:
   enabled: true
   gmail_credentials: "gmail-credentials.json"  # OAuth2 credentials from Google Cloud
@@ -130,6 +128,11 @@ rco_monitoring:
   search_query: null  # Optional Gmail search query (e.g., "from:*@phillyneighborhoods.org")
   label_processed: true  # Add "RCO-Meeting" label to processed emails
   check_frequency: "daily"  # How often to check (for documentation only)
+
+  # Additional email sources to subscribe to:
+  # - Philadelphia Land Bank board agendas (monthly)
+  # - SEPTA board meeting notices
+  # - Individual RCO newsletters (200+)
 
   # Keywords for relevance filtering (used by Claude AI)
   relevant_keywords:
@@ -146,3 +149,5 @@ rco_monitoring:
     - parking
     - housing
     - land use
+    - "land bank"  # Catch Land Bank emails
+    - "board meeting"  # Catch official board notices
