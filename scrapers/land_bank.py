@@ -46,20 +46,35 @@ class LandBankScraper(BaseScraper):
 
         # Look for PDF links from landbank-media.s3.amazonaws.com
         pdf_links = []
+        all_pdf_links = []  # For debugging
 
         for link in soup.find_all('a', href=True):
             href = link['href']
-            text = link.get_text(strip=True).lower()
+            text = link.get_text(strip=True)
+            text_lower = text.lower()
+
+            # Debug: collect all PDF links for inspection
+            if '.pdf' in href.lower():
+                all_pdf_links.append((href, text))
 
             # Check if this is a board agenda/package PDF
             is_s3_pdf = 'landbank-media.s3.amazonaws.com' in href and '.pdf' in href.lower()
-            is_agenda = any(keyword in text for keyword in ['agenda', 'board package', 'board packet'])
+            is_agenda = any(keyword in text_lower for keyword in ['agenda', 'board package', 'board packet'])
 
             # Exclude minutes (we want agendas, not post-meeting minutes)
-            is_minutes = 'minute' in text
+            is_minutes = 'minute' in text_lower
 
             if is_s3_pdf and is_agenda and not is_minutes:
-                pdf_links.append((href, link.get_text(strip=True)))
+                pdf_links.append((href, text))
+
+        # Debug output
+        if all_pdf_links and not pdf_links:
+            print(f"\nDEBUG: Found {len(all_pdf_links)} PDF links total, but none matched our criteria:")
+            for pdf_url, pdf_text in all_pdf_links[:5]:  # Show first 5
+                print(f"  - Text: '{pdf_text}'")
+                print(f"    URL: {pdf_url}")
+                is_s3 = 'landbank-media.s3.amazonaws.com' in pdf_url
+                print(f"    Is S3: {is_s3}, Has 'agenda' keyword: {'agenda' in pdf_text.lower()}\n")
 
         if not pdf_links:
             print(f"No agenda PDFs found on Land Bank board page")
