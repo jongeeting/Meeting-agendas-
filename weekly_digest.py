@@ -61,16 +61,21 @@ class WeeklyDigestGenerator:
         return rco_files, official_files
 
     def load_rco_meetings(self, files):
-        """Load RCO meetings from JSON files."""
+        """Load RCO meetings from JSON files and deduplicate."""
         meetings = []
+        seen = set()  # Track unique meetings by email_id
 
         for file_path in files:
             try:
                 with open(file_path) as f:
                     data = json.load(f)
                     for meeting in data:
-                        meeting['source'] = 'rco'
-                        meetings.append(meeting)
+                        # Use email_id as unique identifier
+                        email_id = meeting.get('email_id')
+                        if email_id and email_id not in seen:
+                            meeting['source'] = 'rco'
+                            meetings.append(meeting)
+                            seen.add(email_id)
             except Exception as e:
                 print(f"Warning: Failed to load {file_path}: {e}")
 
@@ -115,17 +120,17 @@ class WeeklyDigestGenerator:
         # Agenda items
         agenda_items = meeting.get('agenda_items', [])
         if agenda_items:
-            md.append("\n**Relevant Agenda Items:**")
+            md.append("\n**Key Agenda Items:**")
             for item in agenda_items:
                 title = item.get('title', 'Untitled')
                 description = item.get('description', '')
-                why_relevant = item.get('why_relevant', '')
+                address = item.get('address')
 
                 md.append(f"\n**{title}**")
+                if address:
+                    md.append(f"*Location:* {address}")
                 if description:
                     md.append(f"{description}")
-                if why_relevant:
-                    md.append(f"*Why it matters:* {why_relevant}")
 
         # Contact
         if meeting.get('contact_email'):
