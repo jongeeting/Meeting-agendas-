@@ -81,12 +81,21 @@ def main():
         ):
             success_count += 1
 
-    # Run Official Meetings Monitor
+    # Run Official Meetings Monitor (email-based)
     if not args.skip_official:
         total_tasks += 1
         if run_command(
             ["python3", "official_meetings_monitor.py", "--check"],
-            "Running Official Meetings Monitor"
+            "Running Official Meetings Email Monitor"
+        ):
+            success_count += 1
+
+    # Run Meeting Tracker (web scrapers for Planning Commission, etc.)
+    if not args.skip_official:
+        total_tasks += 1
+        if run_command(
+            ["python3", "meeting_tracker.py", "--all"],
+            "Running Meeting Web Scrapers"
         ):
             success_count += 1
 
