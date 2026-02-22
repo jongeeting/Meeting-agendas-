@@ -116,7 +116,7 @@ Respond ONLY with the JSON object, no other text."""
         except json.JSONDecodeError as e:
             print(f"Error parsing classification response: {e}")
             if 'response_text' in locals():
-                print(f"Response was: {response_text[:500]}")
+                print(f"Response was: {repr(response_text[:500])}")
             return {
                 'is_meeting': False,
                 'is_relevant': False,
@@ -126,7 +126,9 @@ Respond ONLY with the JSON object, no other text."""
         except Exception as e:
             print(f"Error classifying email: {e}")
             if 'response_text' in locals():
-                print(f"Response text: {response_text[:500] if isinstance(response_text, str) else 'N/A'}")
+                print(f"Full response text: {repr(response_text)}")
+            if 'message' in locals():
+                print(f"Raw API response: {message}")
             return {
                 'is_meeting': False,
                 'is_relevant': False,
