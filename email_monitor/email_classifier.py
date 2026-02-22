@@ -79,8 +79,11 @@ Respond ONLY with the JSON object, no other text."""
         Returns:
             dict: Classification result with is_meeting, is_relevant, topics, etc.
         """
+        print(f"\n>>> CLASSIFY_EMAIL START <<<")
+        print(f"Email keys: {email.keys() if isinstance(email, dict) else 'NOT A DICT'}")
         try:
             # Build prompt with email content
+            print(f"Building prompt...")
             prompt = self.CLASSIFICATION_PROMPT.format(
                 subject=email.get('subject', 'No Subject'),
                 sender=email.get('sender', 'Unknown'),
@@ -167,11 +170,14 @@ Respond ONLY with the JSON object, no other text."""
         """
         results = []
 
+        print(f"\n=== CLASSIFY_BATCH: Processing {len(emails)} emails ===")
         for i, email in enumerate(emails, 1):
+            print(f"\n--- Processing email {i}/{len(emails)} ---")
             if callback:
                 callback(i, len(emails), email)
 
             classification = self.classify_email(email)
+            print(f"Got classification: {classification}")
             results.append((email, classification))
 
         return results
