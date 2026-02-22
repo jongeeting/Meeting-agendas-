@@ -47,6 +47,10 @@ gmail-token.json
 # Downloaded PDFs
 *.pdf
 
+# Generated outputs (don't commit these)
+summaries/
+weekly_digest_*.md
+
 # OS
 .DS_Store
 Thumbs.db
