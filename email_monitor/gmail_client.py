@@ -20,7 +20,7 @@ class GmailClient:
     """Client for interacting with Gmail API."""
 
     # If modifying these scopes, delete the token.pickle file
-    SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+    SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
     def __init__(self, credentials_path='gmail-credentials.json'):
         """
