@@ -88,14 +88,26 @@ Respond ONLY with the JSON object, no other text."""
             )
 
             # Call Claude API
-            message = self.client.messages.create(
-                model="claude-sonnet-4-5-20250929",
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
-            )
+            try:
+                message = self.client.messages.create(
+                    model="claude-sonnet-4-5-20250929",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                print(f"DEBUG: API call successful, message type: {type(message)}")
+                print(f"DEBUG: Message object: {message}")
+            except Exception as api_error:
+                print(f"ERROR during API call: {api_error}")
+                raise
 
             # Parse JSON response
-            response_text = message.content[0].text.strip()
+            try:
+                response_text = message.content[0].text.strip()
+                print(f"DEBUG: Successfully extracted text from response")
+            except Exception as extract_error:
+                print(f"ERROR extracting text: {extract_error}")
+                print(f"Message content: {message.content if hasattr(message, 'content') else 'N/A'}")
+                raise
 
             # Debug: Print raw response
             print(f"\n=== DEBUG: Raw API Response ===")
