@@ -13,7 +13,9 @@ Usage:
 
 import argparse
 import sys
+import json
 from pathlib import Path
+from datetime import datetime
 
 import yaml
 from dotenv import load_dotenv
@@ -148,6 +150,28 @@ class MeetingTracker:
             meeting_type=meeting_id,
             output_dir=output_dir
         )
+
+        # Save JSON metadata for weekly digest
+        if output_path:
+            json_data = {
+                'meeting_type': meeting_id,
+                'meeting_name': meeting_config['name'],
+                'meeting_date': meeting_date,
+                'pdf_url': pdf_url,
+                'summary': summary,
+                'focus': focus,
+                'timestamp': datetime.now().isoformat(),
+                'source': 'web_scraper'
+            }
+
+            # Save JSON file in same directory as markdown
+            json_path = output_path.with_suffix('.json')
+            try:
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=2)
+                print(f"Metadata saved to {json_path}")
+            except Exception as e:
+                print(f"Warning: Failed to save JSON metadata: {e}")
 
         # Cleanup PDF if configured
         if not self.config.get('settings', {}).get('save_pdfs', False):
