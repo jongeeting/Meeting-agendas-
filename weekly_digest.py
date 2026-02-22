@@ -15,6 +15,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
+from geocoding_utils import PhiladelphiaGeocoder
 
 
 class WeeklyDigestGenerator:
@@ -29,6 +30,7 @@ class WeeklyDigestGenerator:
         """
         self.days = days
         self.cutoff_date = datetime.now() - timedelta(days=days)
+        self.geocoder = PhiladelphiaGeocoder()
 
     def find_recent_summaries(self):
         """Find all JSON summaries from the past N days."""
@@ -128,7 +130,12 @@ class WeeklyDigestGenerator:
 
                 md.append(f"\n**{title}**")
                 if address:
-                    md.append(f"*Location:* {address}")
+                    # Try to add Build Philly Now link
+                    bpn_url = self.geocoder.generate_buildphillynow_url(address)
+                    if bpn_url:
+                        md.append(f"*Location:* {address} ([view on Build Philly Now]({bpn_url}))")
+                    else:
+                        md.append(f"*Location:* {address}")
                 if description:
                     md.append(f"{description}")
 
