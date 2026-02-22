@@ -14,24 +14,24 @@ class MeetingExtractor:
     EXTRACTION_PROMPT = """You are extracting meeting details from an RCO (neighborhood organization) email.
 
 Extract the following information and return as JSON:
-{
+{{
   "meeting_date": "YYYY-MM-DD" or null,
   "meeting_time": "HH:MM AM/PM" or null,
   "meeting_location": "Address or 'Zoom' or 'Virtual'" or null,
   "meeting_link": "Zoom/meeting URL" or null,
   "organization_name": "Name of RCO/organization",
   "agenda_items": [
-    {
+    {{
       "title": "Brief title of agenda item",
       "address": "Street address if mentioned",
       "type": "zoning_variance"/"development"/"bike_lane"/"transit"/"other",
       "description": "1-2 sentence description",
       "why_relevant": "Why this matters for housing advocates"
-    }
+    }}
   ],
   "contact_email": "Contact email if mentioned",
   "rsvp_required": true/false
-}
+}}
 
 Tips:
 - For dates: Look for patterns like "January 23", "1/23", "Tuesday, Jan 23"
