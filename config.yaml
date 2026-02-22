@@ -47,7 +47,7 @@ meetings:
     scraper: "phila_gov"
     pdf_pattern: "Art-Commission-Agenda"
     focus: "design"
-    enabled: true
+    enabled: false  # No PDFs currently available on website - check manually
 
   zba:
     name: "Zoning Board of Adjustment"
