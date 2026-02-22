@@ -20,14 +20,14 @@ You need to determine:
 2. Is the meeting relevant to housing, zoning, development, streets, bike lanes, or transit?
 
 Respond with a JSON object with these fields:
-{
+{{
   "is_meeting": true/false,
   "is_relevant": true/false,
   "confidence": "high"/"medium"/"low",
   "meeting_type": "zoning_meeting"/"general_meeting"/"community_event"/null,
   "topics": ["zoning", "development", "bike lanes", etc.],
   "reason": "Brief explanation of why this is/isn't relevant"
-}
+}}
 
 RELEVANT topics include:
 - Zoning variances and applications
@@ -79,11 +79,8 @@ Respond ONLY with the JSON object, no other text."""
         Returns:
             dict: Classification result with is_meeting, is_relevant, topics, etc.
         """
-        print(f"\n>>> CLASSIFY_EMAIL START <<<")
-        print(f"Email keys: {email.keys() if isinstance(email, dict) else 'NOT A DICT'}")
         try:
             # Build prompt with email content
-            print(f"Building prompt...")
             prompt = self.CLASSIFICATION_PROMPT.format(
                 subject=email.get('subject', 'No Subject'),
                 sender=email.get('sender', 'Unknown'),
@@ -91,31 +88,14 @@ Respond ONLY with the JSON object, no other text."""
             )
 
             # Call Claude API
-            try:
-                message = self.client.messages.create(
-                    model="claude-sonnet-4-5-20250929",
-                    max_tokens=1000,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                print(f"DEBUG: API call successful, message type: {type(message)}")
-                print(f"DEBUG: Message object: {message}")
-            except Exception as api_error:
-                print(f"ERROR during API call: {api_error}")
-                raise
+            message = self.client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=1000,
+                messages=[{"role": "user", "content": prompt}]
+            )
 
             # Parse JSON response
-            try:
-                response_text = message.content[0].text.strip()
-                print(f"DEBUG: Successfully extracted text from response")
-            except Exception as extract_error:
-                print(f"ERROR extracting text: {extract_error}")
-                print(f"Message content: {message.content if hasattr(message, 'content') else 'N/A'}")
-                raise
-
-            # Debug: Print raw response
-            print(f"\n=== DEBUG: Raw API Response ===")
-            print(f"Response text: {repr(response_text[:200])}")
-            print(f"================================\n")
+            response_text = message.content[0].text.strip()
 
             # Try to extract JSON if wrapped in markdown
             if '```json' in response_text:
@@ -134,9 +114,6 @@ Respond ONLY with the JSON object, no other text."""
             return classification
 
         except json.JSONDecodeError as e:
-            print(f"Error parsing classification response: {e}")
-            if 'response_text' in locals():
-                print(f"Response was: {repr(response_text[:500])}")
             return {
                 'is_meeting': False,
                 'is_relevant': False,
@@ -145,10 +122,6 @@ Respond ONLY with the JSON object, no other text."""
             }
         except Exception as e:
             print(f"Error classifying email: {e}")
-            if 'response_text' in locals():
-                print(f"Full response text: {repr(response_text)}")
-            if 'message' in locals():
-                print(f"Raw API response: {message}")
             return {
                 'is_meeting': False,
                 'is_relevant': False,
@@ -170,14 +143,11 @@ Respond ONLY with the JSON object, no other text."""
         """
         results = []
 
-        print(f"\n=== CLASSIFY_BATCH: Processing {len(emails)} emails ===")
         for i, email in enumerate(emails, 1):
-            print(f"\n--- Processing email {i}/{len(emails)} ---")
             if callback:
                 callback(i, len(emails), email)
 
             classification = self.classify_email(email)
-            print(f"Got classification: {classification}")
             results.append((email, classification))
 
         return results
