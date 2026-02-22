@@ -97,6 +97,11 @@ Respond ONLY with the JSON object, no other text."""
             # Parse JSON response
             response_text = message.content[0].text.strip()
 
+            # Debug: Print raw response
+            print(f"\n=== DEBUG: Raw API Response ===")
+            print(f"Response text: {repr(response_text[:200])}")
+            print(f"================================\n")
+
             # Try to extract JSON if wrapped in markdown
             if '```json' in response_text:
                 response_text = response_text.split('```json')[1].split('```')[0].strip()
