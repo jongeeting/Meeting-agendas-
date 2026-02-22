@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
@@ -81,7 +82,54 @@ class WeeklyDigestGenerator:
             except Exception as e:
                 print(f"Warning: Failed to load {file_path}: {e}")
 
+        # Deduplicate joint meetings (same date, time, and agenda items)
+        meetings = self._deduplicate_joint_meetings(meetings)
+
         return meetings
+
+    def _deduplicate_joint_meetings(self, meetings):
+        """Deduplicate joint meetings where multiple RCOs review same items."""
+        unique_meetings = []
+        seen_combinations = set()
+
+        for meeting in meetings:
+            # Create a signature from date, time, and first agenda item address
+            date = meeting.get('meeting_date', '')
+            time = meeting.get('meeting_time', '')
+            agenda_items = meeting.get('agenda_items', [])
+
+            # Get first address from agenda items as part of signature
+            first_address = ''
+            if agenda_items:
+                first_address = agenda_items[0].get('address', '')
+
+            signature = (date, time, first_address)
+
+            if signature not in seen_combinations or not first_address:
+                # First occurrence or no address to match on
+                unique_meetings.append(meeting)
+                if first_address:
+                    seen_combinations.add(signature)
+            else:
+                # This is a duplicate joint meeting - merge the org names
+                for existing in unique_meetings:
+                    existing_date = existing.get('meeting_date', '')
+                    existing_time = existing.get('meeting_time', '')
+                    existing_items = existing.get('agenda_items', [])
+                    existing_address = existing_items[0].get('address', '') if existing_items else ''
+
+                    if (existing_date, existing_time, existing_address) == signature:
+                        # Found the original - merge org names
+                        org_name = meeting.get('organization_name', '')
+                        existing_org = existing.get('organization_name', '')
+
+                        if org_name and org_name not in existing_org:
+                            # Add as joint meeting
+                            if ' & ' not in existing_org:
+                                existing['organization_name'] = f"{existing_org} & {org_name}"
+                        break
+
+        return unique_meetings
 
     def load_official_meetings(self, files):
         """Load official meetings from JSON files."""
@@ -176,6 +224,46 @@ class WeeklyDigestGenerator:
 
         return "\n".join(md)
 
+    def _parse_meeting_date(self, meeting):
+        """Parse meeting date from various formats."""
+        # Try different date fields
+        date_str = meeting.get('meeting_date') or meeting.get('date', '')
+
+        if not date_str:
+            return datetime.max  # Put meetings without dates at the end
+
+        # Try various date formats
+        date_formats = [
+            '%Y-%m-%d',                    # 2026-02-24
+            '%B %d, %Y',                   # February 24, 2026
+            '%b %d, %Y',                   # Feb 24, 2026
+            '%A, %B %d, %Y',               # Monday, February 24, 2026
+            '%A, %b %d, %Y',               # Monday, Feb 24, 2026
+            '%m/%d/%Y',                    # 02/24/2026
+            '%Y_%m_%d',                    # 2026_02_24
+            '%Y_%B_%d',                    # 2026_February_24
+        ]
+
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+
+        # Try to extract date with regex if formats don't work
+        # Match patterns like "February 24, 2026" anywhere in string
+        month_pattern = r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})'
+        match = re.search(month_pattern, date_str, re.IGNORECASE)
+        if match:
+            try:
+                clean_date = f"{match.group(1)} {match.group(2)}, {match.group(3)}"
+                return datetime.strptime(clean_date, '%B %d, %Y')
+            except ValueError:
+                pass
+
+        print(f"Warning: Could not parse date: {date_str}")
+        return datetime.max  # Unparseable dates go at the end
+
     def generate_digest(self, output_path="weekly_digest.md"):
         """Generate the weekly digest markdown file."""
         print(f"📋 Generating weekly digest for past {self.days} days...")
@@ -193,16 +281,9 @@ class WeeklyDigestGenerator:
         print(f"Loaded {len(rco_meetings)} RCO meetings")
         print(f"Loaded {len(official_meetings)} official meetings")
 
-        # Sort by date
-        def parse_date(meeting):
-            date_str = meeting.get('meeting_date') or meeting.get('date', '9999-12-31')
-            try:
-                return datetime.strptime(date_str, '%Y-%m-%d')
-            except:
-                return datetime.max
-
-        rco_meetings.sort(key=parse_date)
-        official_meetings.sort(key=parse_date)
+        # Combine all meetings and sort chronologically
+        all_meetings = rco_meetings + official_meetings
+        all_meetings.sort(key=self._parse_meeting_date)
 
         # Generate markdown
         md_lines = []
@@ -216,45 +297,40 @@ class WeeklyDigestGenerator:
         md_lines.append("")
         md_lines.append("Weekly digest of upcoming meetings relevant to housing advocates, compiled from neighborhood organizations and city agencies.")
         md_lines.append("")
+        md_lines.append(f"**{len(all_meetings)} meetings found** ({len(rco_meetings)} neighborhood, {len(official_meetings)} official)")
+        md_lines.append("")
+        md_lines.append("---")
+        md_lines.append("")
 
-        # RCO Meetings Section
-        if rco_meetings:
-            md_lines.append("## Neighborhood Organization Meetings")
-            md_lines.append("")
-            md_lines.append(f"Found {len(rco_meetings)} relevant neighborhood meetings:")
-            md_lines.append("")
+        # All meetings in chronological order
+        if all_meetings:
+            for meeting in all_meetings:
+                # Format based on source
+                if meeting.get('source') == 'rco':
+                    md_lines.append(self.format_rco_meeting_md(meeting))
+                else:
+                    md_lines.append(self.format_official_meeting_md(meeting))
 
-            for meeting in rco_meetings:
-                md_lines.append(self.format_rco_meeting_md(meeting))
                 md_lines.append("")
                 md_lines.append("---")
                 md_lines.append("")
-
-        # Official Meetings Section
-        if official_meetings:
-            md_lines.append("## Official City Meetings")
+        else:
+            md_lines.append("*No meetings found in the specified time period.*")
             md_lines.append("")
-            md_lines.append(f"Found {len(official_meetings)} official meetings:")
-            md_lines.append("")
-
-            for meeting in official_meetings:
-                md_lines.append(self.format_official_meeting_md(meeting))
-                md_lines.append("")
-                md_lines.append("---")
-                md_lines.append("")
 
         # Footer
         md_lines.append("")
         md_lines.append("---")
         md_lines.append("*This digest was automatically generated from email monitoring and web scraping.*")
+        md_lines.append("")
+        md_lines.append("**Meetings are listed in chronological order** (soonest first)")
 
         # Write to file
         output_file = Path(output_path)
         output_file.write_text("\n".join(md_lines))
 
         print(f"\n✓ Digest generated: {output_file}")
-        print(f"  - {len(rco_meetings)} RCO meetings")
-        print(f"  - {len(official_meetings)} official meetings")
+        print(f"  - {len(all_meetings)} total meetings ({len(rco_meetings)} RCO, {len(official_meetings)} official)")
 
         return output_file
 
