@@ -13,24 +13,46 @@ Usage:
 import argparse
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
 from collections import defaultdict
 from geocoding_utils import PhiladelphiaGeocoder
+from bpn_upcoming_events import (
+    fetch_upcoming_zba,
+    fetch_upcoming_sheriff_sales,
+    format_zba_section,
+    format_sheriff_section,
+)
 
 
 class WeeklyDigestGenerator:
-    """Generates weekly digest from both RCO and official meeting sources."""
+    """Generates weekly digest from both RCO and official meeting sources.
 
-    def __init__(self, days=7):
+    The digest is forward-looking: readers open a Monday email and see the
+    meetings happening in the next 7 days (Mon–Sun). `lookback_days` controls
+    how far back we scan the summaries/ directory for source files, because
+    agendas are typically scraped several days before meetings occur.
+    `forward_days` controls the visible window in the output.
+    """
+
+    def __init__(self, lookback_days=14, forward_days=7):
         """
         Initialize generator.
 
         Args:
-            days: Number of days to look back
+            lookback_days: How many days of summary files to scan
+                (default 14 — catches agendas scraped up to 2 weeks before
+                a meeting, which covers typical city posting timelines).
+            forward_days: How many days ahead to include meetings for
+                (default 7 — the upcoming week).
         """
-        self.days = days
-        self.cutoff_date = datetime.now() - timedelta(days=days)
+        # Kept for backward compat with callers that pass `days`
+        self.days = lookback_days
+        self.lookback_days = lookback_days
+        self.forward_days = forward_days
+        self.cutoff_date = datetime.now() - timedelta(days=lookback_days)
+        self.today = date.today()
+        self.forward_cutoff = self.today + timedelta(days=forward_days)
         self.geocoder = PhiladelphiaGeocoder()
 
     def find_recent_summaries(self):
@@ -147,6 +169,12 @@ class WeeklyDigestGenerator:
 
         return meetings
 
+    # Cap on agenda items shown per meeting in the digest. Keeps each
+    # meeting's section to ~5 lines in the email so readers can scan the
+    # whole digest in under a minute. Overflow items get a single-line
+    # "+ N more" footer.
+    MAX_ITEMS_PER_MEETING = 5
+
     def format_rco_meeting_md(self, meeting):
         """Format a single RCO meeting as markdown."""
         md = []
@@ -167,11 +195,14 @@ class WeeklyDigestGenerator:
         if meeting.get('meeting_link'):
             md.append(f"**Link:** {meeting['meeting_link']}")
 
-        # Agenda items
+        # Agenda items — cap to MAX_ITEMS_PER_MEETING with a "+ N more" footer
         agenda_items = meeting.get('agenda_items', [])
         if agenda_items:
+            shown = agenda_items[:self.MAX_ITEMS_PER_MEETING]
+            overflow = len(agenda_items) - len(shown)
+
             md.append("\n**Key Agenda Items:**")
-            for item in agenda_items:
+            for item in shown:
                 title = item.get('title', 'Untitled')
                 description = item.get('description', '')
                 address = item.get('address')
@@ -186,6 +217,9 @@ class WeeklyDigestGenerator:
                         md.append(f"*Location:* {address}")
                 if description:
                     md.append(f"{description}")
+
+            if overflow > 0:
+                md.append(f"\n*+ {overflow} additional agenda items*")
 
         # Contact
         if meeting.get('contact_email'):
@@ -216,11 +250,18 @@ class WeeklyDigestGenerator:
         if meeting.get('summary'):
             md.append(f"\n{meeting['summary']}")
 
-        # Agenda items
-        if meeting.get('agenda_items'):
+        # Agenda items — cap to MAX_ITEMS_PER_MEETING with a "+ N more" footer
+        agenda_items = meeting.get('agenda_items') or []
+        if agenda_items:
+            shown = agenda_items[:self.MAX_ITEMS_PER_MEETING]
+            overflow = len(agenda_items) - len(shown)
+
             md.append("\n**Key Items:**")
-            for item in meeting['agenda_items']:
+            for item in shown:
                 md.append(f"- {item}")
+
+            if overflow > 0:
+                md.append(f"*+ {overflow} additional items*")
 
         return "\n".join(md)
 
@@ -264,11 +305,24 @@ class WeeklyDigestGenerator:
         print(f"Warning: Could not parse date: {date_str}")
         return datetime.max  # Unparseable dates go at the end
 
+    def _is_in_forward_window(self, meeting) -> bool:
+        """True if the meeting date falls within today..today+forward_days."""
+        parsed = self._parse_meeting_date(meeting)
+        if parsed == datetime.max:
+            # Couldn't parse — keep it in, better to include than lose
+            return True
+        as_date = parsed.date()
+        return self.today <= as_date <= self.forward_cutoff
+
     def generate_digest(self, output_path="weekly_digest.md"):
         """Generate the weekly digest markdown file."""
-        print(f"📋 Generating weekly digest for past {self.days} days...")
+        print(
+            f"📋 Generating digest: forward window {self.today} → "
+            f"{self.forward_cutoff} (next {self.forward_days} days)"
+        )
 
-        # Find all recent summaries
+        # Find all recent summaries (scan back further to catch agendas
+        # scraped before the forward window opens)
         rco_files, official_files = self.find_recent_summaries()
 
         print(f"Found {len(rco_files)} RCO meeting files")
@@ -278,35 +332,73 @@ class WeeklyDigestGenerator:
         rco_meetings = self.load_rco_meetings(rco_files)
         official_meetings = self.load_official_meetings(official_files)
 
-        print(f"Loaded {len(rco_meetings)} RCO meetings")
-        print(f"Loaded {len(official_meetings)} official meetings")
+        # Filter to the forward-looking window — we only want upcoming
+        # meetings in the output, not stuff that already happened.
+        rco_meetings = [m for m in rco_meetings if self._is_in_forward_window(m)]
+        official_meetings = [m for m in official_meetings if self._is_in_forward_window(m)]
+
+        print(f"Upcoming RCO meetings: {len(rco_meetings)}")
+        print(f"Upcoming official meetings: {len(official_meetings)}")
 
         # Combine all meetings and sort chronologically
         all_meetings = rco_meetings + official_meetings
         all_meetings.sort(key=self._parse_meeting_date)
 
+        # Pull ZBA hearings and sheriff sales from BPN Postgres — replaces
+        # the disabled ZBA / sheriff scrapers. Safe to call without BPN_POSTGRES
+        # set (returns empty list with a warning).
+        print("Querying BPN for upcoming ZBA hearings + sheriff sales...")
+        zba_hearings = fetch_upcoming_zba(days_ahead=self.forward_days, start_date=self.today)
+        sheriff_sales = fetch_upcoming_sheriff_sales(days_ahead=self.forward_days, start_date=self.today)
+        print(f"  ZBA hearings: {len(zba_hearings)}")
+        print(f"  Sheriff sales: {len(sheriff_sales)}")
+
         # Generate markdown
         md_lines = []
 
         # Header
-        start_date = (datetime.now() - timedelta(days=self.days)).strftime("%B %d")
-        end_date = datetime.now().strftime("%B %d, %Y")
+        start_label = self.today.strftime("%B %d")
+        end_label = self.forward_cutoff.strftime("%B %d, %Y")
 
-        md_lines.append(f"# Philadelphia Housing & Development Meetings")
-        md_lines.append(f"## {start_date} - {end_date}")
+        md_lines.append("# Philadelphia Meeting Agendas — Week Ahead")
+        md_lines.append(f"## {start_label} – {end_label}")
         md_lines.append("")
-        md_lines.append("Weekly digest of upcoming meetings relevant to housing advocates, compiled from neighborhood organizations and city agencies.")
+        md_lines.append(
+            "Your weekly briefing on upcoming public meetings and hearings "
+            "that shape Philadelphia housing and development."
+        )
         md_lines.append("")
-        md_lines.append(f"**{len(all_meetings)} meetings found** ({len(rco_meetings)} neighborhood, {len(official_meetings)} official)")
+        md_lines.append(
+            f"**This week:** {len(all_meetings)} meetings "
+            f"({len(rco_meetings)} neighborhood, {len(official_meetings)} official) · "
+            f"{len(zba_hearings)} ZBA hearings · {len(sheriff_sales)} sheriff sales"
+        )
         md_lines.append("")
         md_lines.append("---")
         md_lines.append("")
 
-        # All meetings in chronological order
+        # ── ZBA hearings ─────────────────────────────────────────
+        md_lines.append("## Zoning Board of Adjustment — Upcoming Hearings")
+        md_lines.append("")
+        md_lines.append(format_zba_section(zba_hearings))
+        md_lines.append("")
+        md_lines.append("---")
+        md_lines.append("")
+
+        # ── Sheriff sales ────────────────────────────────────────
+        md_lines.append("## Sheriff Sales — This Week")
+        md_lines.append("")
+        md_lines.append(format_sheriff_section(sheriff_sales))
+        md_lines.append("")
+        md_lines.append("---")
+        md_lines.append("")
+
+        # ── Public meeting agendas ───────────────────────────────
+        md_lines.append("## Public Meetings")
+        md_lines.append("")
         if all_meetings:
             for meeting in all_meetings:
-                # Format based on source
-                if meeting.get('source') == 'rco':
+                if meeting.get("source") == "rco":
                     md_lines.append(self.format_rco_meeting_md(meeting))
                 else:
                     md_lines.append(self.format_official_meeting_md(meeting))
@@ -315,7 +407,7 @@ class WeeklyDigestGenerator:
                 md_lines.append("---")
                 md_lines.append("")
         else:
-            md_lines.append("*No meetings found in the specified time period.*")
+            md_lines.append("*No public meetings scheduled in the upcoming window.*")
             md_lines.append("")
 
         # Footer
@@ -338,10 +430,17 @@ class WeeklyDigestGenerator:
 def main():
     parser = argparse.ArgumentParser(description="Generate weekly meeting digest")
     parser.add_argument(
-        "--days",
+        "--forward-days",
         type=int,
         default=7,
-        help="Number of days to look back (default: 7)"
+        help="Days ahead to include meetings for (default: 7 — the upcoming week)"
+    )
+    parser.add_argument(
+        "--lookback-days",
+        type=int,
+        default=14,
+        help="Days of summary files to scan back (default: 14 — "
+             "covers typical agenda posting lead time)"
     )
     parser.add_argument(
         "--output",
@@ -351,7 +450,10 @@ def main():
 
     args = parser.parse_args()
 
-    generator = WeeklyDigestGenerator(days=args.days)
+    generator = WeeklyDigestGenerator(
+        lookback_days=args.lookback_days,
+        forward_days=args.forward_days,
+    )
     generator.generate_digest(output_path=args.output)
 
 

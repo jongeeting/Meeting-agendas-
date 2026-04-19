@@ -11,77 +11,73 @@ from anthropic import Anthropic
 class AgendaSummarizer:
     """Summarizes meeting agendas using Claude AI."""
 
+    # Shared formatting rules appended to every prompt. Keeps outputs tight
+    # and scannable — earlier versions produced walls of text because no
+    # length constraints were specified and max_tokens was 4000.
+    LENGTH_RULES = """
+STRICT FORMATTING RULES (follow these exactly):
+- Maximum 5 items in the summary. Pick the MOST consequential ones. If there
+  are more, end the list with "+ N other routine items" where N is the count
+  of items you excluded.
+- Each item: 1-2 sentences. Be specific (address, zoning code, dollar amount)
+  but cut adjectives and recap language.
+- Skip items that are routine administrative business (minutes approval,
+  officer reports, procedural votes) unless they are genuinely newsworthy.
+- No "in summary" preamble. No closing pep talk. Bottom Line is 1-2 sentences
+  MAX and only if it adds signal beyond the item list.
+- Output goes directly into a reader's email. Every sentence must earn its
+  place."""
+
     # Summarization prompts for different meeting types
     PROMPTS = {
-        "housing": """You are a housing advocate analyzing a meeting agenda.
-
-Your task is to create a summary that helps housing advocates understand what's on the agenda and why it matters for housing production and affordability.
-
-Please analyze this agenda and create a summary with the following format:
-
-1. **Brief intro line** - One sentence about the meeting date and overall theme
-2. **Major items** - For each significant item, include:
-   - An emoji flag (🏗️ for development, 📋 for zoning, 🏘️ for housing policy, ⚖️ for legal/admin)
-   - Item title and brief description
-   - Why it matters for housing advocates (impact on housing production, affordability, development process, etc.)
-3. **Bottom Line** - 2-3 sentence summary of key takeaways
-
-Use a conversational, advocacy-focused tone. Be specific about addresses, zoning changes, and policy implications.
-
-Focus on:
-- Zoning bills and overlay districts
-- Development proposals and land deals
-- Policy changes affecting housing production
-- Administrative items relevant to development process""",
-
-        "design": """You are an urban design professional analyzing a design review agenda.
-
-Create a summary focused on:
-- Major development projects under review
-- Design guidelines and standards being discussed
-- Public space and streetscape improvements
-- Architectural significance and context
-- Community impact of proposed designs
+        "housing": """You are writing a weekly email briefing for Philadelphia housing advocates, developers, and civic leaders. Readers are time-constrained professionals who pay for this content — they want the signal, not the whole agenda.
 
 Format:
-1. Brief intro about the meeting
-2. Project-by-project summary with design highlights
-3. Overall themes and notable items""",
+1. **One-sentence intro** — meeting body + date + the single most important thing on the agenda.
+2. **Top items** (max 5), each one:
+   - Emoji: 🏗️ development/construction, 📋 zoning, 🏘️ housing policy, ⚖️ legal/admin
+   - **Title in bold**, then 1-2 sentences on (a) what it is and (b) why it matters. Include address, zoning code, unit count, or dollar amount when present.
+3. **Bottom Line** (optional, 1-2 sentences max) — only if there's a cross-cutting theme. Skip if not.
 
-        "historic": """You are a preservation advocate analyzing a historical commission agenda.
+Priority signal: zoning overlays, development proposals with substantial unit counts, policy changes affecting housing production, land deals.
+Low priority (skip unless unusual): administrative reports, minor text amendments, routine approvals.""",
 
-Create a summary focused on:
-- Properties seeking historical designation
-- Demolition requests and their implications
-- Renovation proposals for historic buildings
-- Policy changes affecting historic preservation
-- Community heritage considerations
+        "design": """You are writing a weekly email briefing on Philadelphia design review for architects, planners, and civic leaders.
 
 Format:
-1. Brief intro
-2. Item-by-item analysis with preservation context
-3. Key preservation issues at stake""",
+1. **One-sentence intro** — meeting date + overall theme of the review.
+2. **Top projects** (max 5), each:
+   - **Address / project name in bold**, then 1-2 sentences on the design (scale, use, notable features) and any flagged issues (massing, setbacks, materials).
+3. **Bottom Line** (optional, 1-2 sentences) — only if a design pattern repeats.
 
-        "transportation": """You are a transit advocate analyzing transportation meeting minutes.
+Priority: large-scale projects, prominent locations, contested designs, projects creating significant public space. Skip routine facade updates unless unusual.""",
 
-Create a summary focused on:
-- Service changes and route modifications
-- Capital projects and infrastructure
-- Fare and policy changes
-- Accessibility improvements
-- Budget and funding allocations
+        "historic": """You are writing a weekly email briefing on Philadelphia historic preservation for preservation advocates and property owners.
 
 Format:
-1. Brief overview
-2. Major items with transit impact analysis
-3. Key takeaways for riders and advocates""",
+1. **One-sentence intro** — meeting date + biggest preservation call on the agenda.
+2. **Top items** (max 5), each:
+   - **Property address / item title in bold**, then 1-2 sentences on the preservation question (designation, demolition, alteration) and stakes.
+3. **Bottom Line** (optional) — only if multiple items point to a trend.
 
-        "general": """Analyze this meeting agenda and create a clear, concise summary.
+Priority: demolition proposals, designation hearings for significant properties, denial/approval of historic-district alterations.""",
+
+        "transportation": """You are writing a weekly email briefing on Philadelphia transit for riders, advocates, and planners.
 
 Format:
-1. Brief intro about the meeting
-2. Major agenda items with context
-3. Key takeaways and action items"""
+1. **One-sentence intro** — meeting date + headline decision.
+2. **Top items** (max 5), each:
+   - **Item in bold**, then 1-2 sentences on the service / infrastructure / fare change and rider impact.
+3. **Bottom Line** (optional) — only if a service pattern emerges.
+
+Priority: service changes, fare policy, capital project go/no-go, accessibility. Skip budget line-items unless politically significant.""",
+
+        "general": """Write a weekly email briefing on this Philadelphia government meeting for civic-minded readers.
+
+Format:
+1. **One-sentence intro** — meeting body + date + headline item.
+2. **Top items** (max 5), each: **item title in bold**, 1-2 sentences of substance.
+3. **Bottom Line** (optional, 1-2 sentences) — only if there's a through-line.""",
     }
 
     def __init__(self, api_key=None):
@@ -113,10 +109,14 @@ Format:
         """
         print(f"Generating summary using Claude API (focus: {focus})...")
 
-        # Get the appropriate prompt
+        # Get the appropriate focus-specific prompt and append shared
+        # length/format rules. The rules are where verbosity gets constrained;
+        # the focus prompt is where the editorial voice is set.
         prompt_template = self.PROMPTS.get(focus, self.PROMPTS["general"])
 
         full_prompt = f"""{prompt_template}
+
+{self.LENGTH_RULES}
 
 Meeting: {meeting_name}
 Date: {meeting_date}
@@ -128,8 +128,12 @@ Here's the agenda text:
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-5-20250929",
-                max_tokens=4000,
+                # Sonnet 4.6 — tighter, faster, cheaper than 4.5 for structured
+                # summarization work like this.
+                model="claude-sonnet-4-6",
+                # Was 4000 — way too generous for a tight weekly digest.
+                # 1200 forces real editing and prevents wall-of-text output.
+                max_tokens=1200,
                 messages=[
                     {"role": "user", "content": full_prompt}
                 ]
