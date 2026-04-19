@@ -26,6 +26,18 @@ import os
 from datetime import date, timedelta
 from typing import Any
 
+# Load .env if present — same pattern as meeting_tracker.py. Safe to call
+# from anywhere in the process; dotenv is a no-op if no .env file exists
+# or if the caller has already loaded it.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    # dotenv is already in requirements.txt, but if somehow missing we
+    # fall back to pure os.environ (caller must export BPN_POSTGRES).
+    pass
+
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
