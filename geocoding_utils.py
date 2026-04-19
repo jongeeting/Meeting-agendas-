@@ -98,19 +98,28 @@ class PhiladelphiaGeocoder:
 
     def generate_buildphillynow_url(self, address: str) -> Optional[str]:
         """
-        Generate a Build Philly Now dashboard URL for an address.
+        Generate a Build Philly Now parcel-page URL for an address.
+
+        Readers following a link from the weekly digest want the FULL
+        context on that property — zoning, ownership, permits, ZBA
+        history, sale history — not a map popup. The parcel page
+        delivers that on a dedicated URL that's also shareable.
+
+        (Previously returned a map-with-popup URL. If you need the map
+        view instead, use `/parcel/{opa}` then click "view on map" there,
+        or construct the map URL manually via `result['latitude']` etc.)
 
         Args:
             address: Street address in Philadelphia
 
         Returns:
-            Build Philly Now URL or None if geocoding fails
+            Build Philly Now parcel-page URL, or None if geocoding fails.
 
         Example:
             >>> geocoder = PhiladelphiaGeocoder()
             >>> url = geocoder.generate_buildphillynow_url("131-33 S 12th St")
             >>> print(url)
-            https://map.buildphillynow.org/?parcel=885727860&lng=-75.1601&lat=39.9497
+            https://map.buildphillynow.org/parcel/885727860
         """
         result = self.geocode(address)
 
@@ -118,10 +127,12 @@ class PhiladelphiaGeocoder:
             return None
 
         parcel = result['parcel_number']
-        lat = result['latitude']
-        lng = result['longitude']
+        # Strip non-digits to match BPN's /parcel/[parcelNumber] route format
+        clean = "".join(c for c in str(parcel) if c.isdigit())
+        if len(clean) < 5:
+            return None
 
-        return f"https://map.buildphillynow.org/?parcel={parcel}&lng={lng}&lat={lat}"
+        return f"https://map.buildphillynow.org/parcel/{clean}"
 
 
 def format_address_with_link(address: str, geocoder: Optional[PhiladelphiaGeocoder] = None) -> str:
