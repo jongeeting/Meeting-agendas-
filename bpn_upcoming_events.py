@@ -99,6 +99,7 @@ def fetch_upcoming_zba(
             pe.appeal_grounds,
             pe.status,
             pe.source_id AS case_number,
+            pe.unit_count,
             COALESCE(p.address, pe.address) AS address,
             p.zoning,
             p.neighborhood,
@@ -137,6 +138,7 @@ def fetch_upcoming_sheriff_sales(
             pe.event_date_dt AS event_date,
             pe.description,
             pe.source_id AS case_number,
+            pe.unit_count,
             COALESCE(p.address, pe.address) AS address,
             p.zoning,
             p.neighborhood,
@@ -169,12 +171,35 @@ def buildphillynow_parcel_url(opa_number: str | None) -> str | None:
     return f"https://map.buildphillynow.org/parcel/{clean}"
 
 
+def _unit_count_prefix(unit_count: Any) -> str:
+    """Render `🏘️ 12 units` as a prefix when unit_count is meaningful.
+
+    BPN's pipeline parses unit counts from permit descriptions and scope-of-work
+    text (see pipeline/events/transformer.py). Surfacing this up front lets
+    readers filter by development scale at a glance — "a 40-unit variance
+    next door" is very different from a single-family shed addition.
+    """
+    try:
+        n = int(unit_count) if unit_count is not None else 0
+    except (TypeError, ValueError):
+        return ""
+    if n <= 0:
+        return ""
+    # Don't label single-unit items — too noisy, and most are just SFHs
+    if n == 1:
+        return ""
+    return f"**🏘️ {n} units** · "
+
+
 def format_zba_section(hearings: list[dict[str, Any]]) -> str:
     """Render ZBA hearings as a markdown digest section.
 
     Groups by day so a multi-day week reads as a natural agenda. Caps items
-    per day at 10 with an overflow line. Each hearing links to its parcel
-    page on BPN for context (ownership, zoning, recent permits).
+    per day at 10 with an overflow line. Each hearing:
+    - Leads with unit count when available (most useful signal for readers)
+    - Links to its BPN parcel page for full context
+    - Shows full appeal grounds on an indented line below the header, so
+      the header stays scannable but the detail is still there
     """
     if not hearings:
         return "*No ZBA hearings scheduled this week.*"
@@ -189,6 +214,14 @@ def format_zba_section(hearings: list[dict[str, Any]]) -> str:
         by_day.setdefault(str(day), []).append(h)
 
     for day, items in sorted(by_day.items()):
+        # Sort within a day: multi-unit projects first (most newsworthy),
+        # then everything else. Null unit_counts go last in their bucket.
+        items.sort(
+            key=lambda h: (
+                -(int(h.get("unit_count") or 0) if h.get("unit_count") else 0),
+                (h.get("neighborhood") or "~"),
+            )
+        )
         lines.append(f"\n**{day}** ({len(items)} hearing{'s' if len(items) != 1 else ''})")
         shown = items[:MAX_PER_DAY]
         overflow = len(items) - len(shown)
@@ -198,16 +231,18 @@ def format_zba_section(hearings: list[dict[str, Any]]) -> str:
             bpn_link = f" ([details]({url}))" if url else ""
             nhood = h.get("neighborhood")
             nhood_suffix = f" — {nhood}" if nhood else ""
-            grounds = h.get("appeal_grounds")
-            # Trim appeal_grounds to the first clause; full text goes on BPN
-            grounds_short = ""
+            unit_prefix = _unit_count_prefix(h.get("unit_count"))
+            grounds = (h.get("appeal_grounds") or "").strip()
+
+            # Header line stays scannable
+            lines.append(f"- {unit_prefix}**{addr}**{nhood_suffix}{bpn_link}")
+            # Full appeal grounds on an indented continuation line — readers
+            # can skim headers and drop into grounds when something catches.
             if grounds:
-                first_sentence = grounds.split(".")[0].strip()
-                # Also cap length to keep email rows scannable
-                if len(first_sentence) > 140:
-                    first_sentence = first_sentence[:137].rstrip() + "…"
-                grounds_short = f" — {first_sentence}"
-            lines.append(f"- {addr}{nhood_suffix}{bpn_link}{grounds_short}")
+                # Markdown requires a blank line or two-space indent for
+                # continuations in a list. Use a two-space indent so the
+                # grounds sit visually under the bullet.
+                lines.append(f"  {grounds}")
         if overflow > 0:
             lines.append(f"- *+ {overflow} more hearings this day*")
 
@@ -230,9 +265,16 @@ def format_sheriff_section(sales: list[dict[str, Any]]) -> str:
         bpn_link = f" ([details]({url}))" if url else ""
         nhood = s.get("neighborhood")
         nhood_suffix = f" — {nhood}" if nhood else ""
+        unit_prefix = _unit_count_prefix(s.get("unit_count"))
         event_date = s.get("event_date")
         date_suffix = f" ({event_date})" if event_date else ""
-        lines.append(f"- {addr}{nhood_suffix}{date_suffix}{bpn_link}")
+        description = (s.get("description") or "").strip()
+
+        lines.append(f"- {unit_prefix}**{addr}**{nhood_suffix}{date_suffix}{bpn_link}")
+        # Sheriff-sale description is typically "Opening bid: $X | Atty: Y"
+        # — short and useful on a continuation line.
+        if description:
+            lines.append(f"  {description}")
 
     if overflow > 0:
         lines.append(f"- *+ {overflow} more sales scheduled this week*")
